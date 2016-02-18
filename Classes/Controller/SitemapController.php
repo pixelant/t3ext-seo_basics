@@ -59,6 +59,25 @@ class SitemapController
     protected $currentHostName = '';
 
     /**
+     * language configuration array containing information about what languages include in sitemap
+     * array of sys_language_uid => hreflang
+     * @var array
+     */
+    protected $sysLanguageHrefLangMappings = array();
+
+    /**
+     * contains an array of pages to exclude from sitemap
+     * @var array
+     */
+    protected $excludedPageUids = array();
+
+    /**
+     * if set only pages with doktype from array will be included in sitemap
+     * @var array
+     */
+    protected $allowedDoktypes = array();
+
+    /**
      * Generates a XML sitemap from the page structure, entry point for the page
      *
      * @param string $content the content to be filled, usually empty
@@ -80,58 +99,77 @@ class SitemapController
             }
         }
 
+        $this->excludedPageUids = GeneralUtility::trimExplode(',', $this->sitemapConfiguration['excludePages'], true);
+        $this->allowedDoktypes = GeneralUtility::trimExplode(',', $this->sitemapConfiguration['allowedDoktypes'], true);
+        $this->sysLanguageHrefLangMappings = $this->sitemapConfiguration['sysLanguageHrefLangMappings.'];
+
         $id = (int)$this->getFrontendController()->id;
         $treeRecords = $this->fetchPagesFromTreeStructure($id);
 
-
-        $excludedPageUids = GeneralUtility::trimExplode(',', $this->sitemapConfiguration['excludePages'], true);
         foreach ($treeRecords as $row) {
             $item = $row['row'];
+            $languageOverlayItems = array();
+            $sitemapPages = array();
 
-            // don't render spacers, sysfolders etc, and the ones that have the
-            // "no_search" checkbox
-            if ($item['doktype'] >= 199 || intval($item['no_search']) == 1) {
-                continue;
+            // check if sysLanguageHrefLangMappings are set, then fetch page language overlays
+            if (is_array($this->sysLanguageHrefLangMappings) && count($this->sysLanguageHrefLangMappings) > 0) {
+
+                foreach ($this->sysLanguageHrefLangMappings as $sysLanguageUid => $hreflang) {
+
+                    // No need to check page overlay for default language
+                    if ($sysLanguageUid > 0) {
+
+                        // Fetch overlay for language
+                        $itemOverlayed = $this->getFrontendController()->sys_page->getPageOverlay($item, $sysLanguageUid);
+
+                        // Could also include || !GeneralUtility::hideIfNotTranslated($itemOverlayed['l18n_cfg']),
+                        // but would it be of any use to output in sitemap if there are no real translation?
+                        if ($itemOverlayed['_PAGES_OVERLAY']) {
+                            $languageOverlayItems[$sysLanguageUid] = $itemOverlayed;
+                        }
+                    }
+                }
             }
 
-            // remove "hide-in-menu" items
-            if ($this->sitemapConfiguration['renderHideInMenu'] == 0 && intval($item['nav_hide']) == 1) {
-                continue;
+            // "combine" all valid versions of page
+            if ($this->includePageInSitemap($item)) {
+                // default language
+                $sitemapPages[0] = $item;
+            }
+            if (is_array($languageOverlayItems)) {
+                foreach ($languageOverlayItems as $sysLanguageUid => $languageOverlayItem) {
+                    if ($this->includePageInSitemap($languageOverlayItem)) {
+                        // language overlays
+                        $sitemapPages[$sysLanguageUid] = $languageOverlayItem;
+                    }
+                }
             }
 
-            // explicitly remove items based on a deny-list
-            if (!empty($excludedPageUids) && in_array($item['uid'], $excludedPageUids)) {
-                continue;
+            if (is_array($sitemapPages)) {
+                foreach ($sitemapPages as $sysLanguageUid => $currentItem) {
+                    $url = $this->buildPageUrl($currentItem);
+                    $lastmod = $this->buildPageLastmod($currentItem);
+
+                    if (!isset($this->usedUrls[$url])) {
+                        $this->usedUrls[$url] = array(
+                            'url' => $url,
+                            'lastmod' => $lastmod
+                        );
+                    }
+                    if (count($sitemapPages) > 1) {
+                        foreach ($sitemapPages as $alternateSysLanguageUid => $alternateItem) {
+                            $alternateUrl = $this->buildPageUrl($alternateItem);
+                            $alternetHreflang = $this->sysLanguageHrefLangMappings[$alternateSysLanguageUid];
+                            if (!isset($this->usedUrls[$url]['alternates'][$alternateUrl])) {
+                                $this->usedUrls[$url]['alternates'][$alternateUrl] = array(
+                                    'href' => $alternateUrl,
+                                    'hreflang' => $alternetHreflang
+                                );
+                            }
+                        }
+                    }
+                }
             }
-
-            $conf = array(
-                'parameter' => $item['uid']
-            );
-                // also allow different languages
-            if (!empty($this->getFrontendController()->sys_language_uid)) {
-                $conf['additionalParams'] = '&L=' . $this->getFrontendController()->sys_language_uid;
-            }
-
-                // create the final URL
-            $url  = $this->getFrontendController()->cObj->typoLink_URL($conf);
-            $urlParts = parse_url($url);
-            if (!$urlParts['host']) {
-                $url = $this->baseURL . ltrim($url, '/');
-            }
-            $url = htmlspecialchars($url);
-
-            if (isset($this->usedUrls[$url])) {
-                continue;
-            }
-            $lastmod = ($item['SYS_LASTCHANGED'] ? $item['SYS_LASTCHANGED'] : $item['crdate']);
-
-                // format date, see http://www.w3.org/TR/NOTE-datetime for possible formats
-            $lastmod = date('c', $lastmod);
-
-            $this->usedUrls[$url] = array(
-                'url' => $url,
-                'lastmod' => $lastmod
-            );
         }
 
         // check for additional pages
@@ -145,7 +183,6 @@ class SitemapController
             }
         }
 
-
         // creating the XML output
         foreach ($this->usedUrls as $urlData) {
             // skip pages that are not on the same domain
@@ -158,10 +195,18 @@ class SitemapController
             } else {
                 $lastModificationDate = '';
             }
+            // alternate hreflang
+            $alternates = '';
+            if ($urlData['alternates']) {
+                foreach ($urlData['alternates'] as $key => $alternate) {
+                    $alternates .= '
+        <xhtml:link rel="alternate" hreflang="' . $alternate['hreflang'] . '" href="' . $alternate['href'] . '" />';
+                }
+            }
 
             $content .= '
     <url>
-        <loc>' . htmlspecialchars($urlData['url']) . '</loc>' . $lastModificationDate . '
+        <loc>' . htmlspecialchars($urlData['url']) . '</loc>' . $lastModificationDate . $alternates . '
     </url>';
         }
 
@@ -179,7 +224,7 @@ class SitemapController
         // see https://www.google.com/webmasters/tools/docs/en/protocol.html for complete format
         $content =
 '<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . $content . '
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">' . $content . '
 </urlset>';
 
         return $content;
@@ -418,6 +463,84 @@ class SitemapController
         $treeRecords = $tree->tree;
         array_unshift($treeRecords, array('row' => $treeStartingRecord));
         return $treeRecords;
+    }
+
+    /**
+     * check if page is valid for sitemap
+     * @return bool
+     */
+    protected function includePageInSitemap($page)
+    {
+        $result = true;
+
+        // don't render spacers, sysfolders etc, and the ones that have the
+        // "no_search" checkbox
+        if ($page['doktype'] >= 199 || intval($page['no_search']) == 1) {
+            $result = false;
+        }
+
+        // remove "hide-in-menu" items
+        if ($this->sitemapConfiguration['renderHideInMenu'] == 0 && intval($page['nav_hide']) == 1) {
+            $result = false;
+        }
+
+        // explicitly remove items based on a deny-list
+        if (!empty($this->excludedPageUids) && in_array($page['uid'], $this->excludedPageUids)) {
+            $result = false;
+        }
+
+        // explicitly remove pages based on allowedDoktypes if set
+        if (!empty($this->allowedDoktypes) && !in_array($page['doktype'], $this->allowedDoktypes)) {
+            $result = false;
+        }
+
+        // remove page if page isn't language_overlay and hideIfDefaultLanguage is set
+        if (!$page['_PAGES_OVERLAY'] && GeneralUtility::hideIfDefaultLanguage($page['l18n_cfg'])) {
+            $result = false;
+        }
+
+        return $result;
+    }
+
+    /**
+     * build url for page
+     * @return string
+     */
+    protected function buildPageUrl($page)
+    {
+
+            $conf = array(
+                'parameter' => $page['uid'],
+                /*'forceAbsoluteUrl' => 1*/
+            );
+            // check if page is language overlay
+            if ($page['_PAGES_OVERLAY'] && $page['_PAGES_OVERLAY_LANGUAGE']) {
+                $conf['additionalParams'] = '&L=' . (int)$page['_PAGES_OVERLAY_LANGUAGE'];
+            }
+
+            // create the final URL
+            $url  = $this->getFrontendController()->cObj->typoLink_URL($conf);
+
+            $urlParts = parse_url($url);
+            if (!$urlParts['host']) {
+                $url = $this->baseURL . ltrim($url, '/');
+            }
+
+            return htmlspecialchars($url);
+    }
+
+    /**
+     * build lastmod for page
+     * @return string
+     */
+    protected function buildPageLastmod($page)
+    {
+
+            $lastmod = ($page['SYS_LASTCHANGED'] ? $page['SYS_LASTCHANGED'] : $page['crdate']);
+
+            // format date, see http://www.w3.org/TR/NOTE-datetime for possible formats
+            $lastmod = date('c', $lastmod);
+            return $lastmod;
     }
 
     /**

@@ -6,11 +6,11 @@ plugin.tx_seobasics {
 	5 = TEXT
 	5.value (
 
-	
+
 )
 
 	# Building the page title
-	10 = TEXT 
+	10 = TEXT
 	10.data = page:tx_seo_titletag // page:title
 	10.trim = 1
 	10.stdWrap.stdWrap.append = TEXT
@@ -30,7 +30,7 @@ plugin.tx_seobasics {
 
 
 	# Building the Keywords tag
-	30 = TEXT 
+	30 = TEXT
 	30 < .10
 	30.data = page:keywords
 	30.stdWrap.noTrimWrap = {$plugin.tx_seo.keywordsWrap}
@@ -86,3 +86,19 @@ tx_seo_xmlsitemaps {
 	10.userFunc = B13\SeoBasics\Controller\SitemapController->renderXMLSitemap
 	10.resolveMainShortcut = 1
 }
+
+
+# Example configuration
+#
+# Configure sitemap to indicate alternate language pages
+# (https://support.google.com/webmasters/answer/2620865?hl=en)
+#
+#tx_seo_xmlsitemaps.10.sysLanguageHrefLangMappings {
+#    # sys_language_uid = hreflang
+#    0 = en
+#    1 = sv-se
+#}
+#
+# Limit allowed doktypes to only Standard pages
+# (only affects page selection if set)
+#tx_seo_xmlsitemaps.10.allowedDoktypes = 1
