@@ -186,7 +186,7 @@ class SitemapController
         // creating the XML output
         foreach ($this->usedUrls as $urlData) {
             // skip pages that are not on the same domain
-            if (stripos($urlData['url'], $this->currentHostName) === false) {
+            if (stripos($urlData['url'], $this->currentHostName) === false && !$this->sitemapConfiguration['ignoreSameDomainCheck']) {
                 continue;
             }
             if ($urlData['lastmod']) {
