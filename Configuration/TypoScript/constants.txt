@@ -14,4 +14,7 @@ plugin.tx_seo {
 
 	# cat=plugin.seo/string; type=boolean; label= Enable the canonical tag: Adds a new tag for showing the unique URL for this page.
 	enableCanonicalTag = 1
+
+	# cat=plugin.seo/string; type=boolean; label= Ignore same domain check for sitemap.xml generator (can be used for sites that uses separate domains for localization).
+	ignoreSameDomainCheck = 0
 }

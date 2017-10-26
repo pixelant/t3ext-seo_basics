@@ -85,6 +85,7 @@ tx_seo_xmlsitemaps {
 	10 = USER
 	10.userFunc = B13\SeoBasics\Controller\SitemapController->renderXMLSitemap
 	10.resolveMainShortcut = 1
+	10.ignoreSameDomainCheck = {$plugin.tx_seo.ignoreSameDomainCheck}
 }
 
 
