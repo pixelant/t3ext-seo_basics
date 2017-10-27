@@ -8,20 +8,19 @@ $EM_CONF[$_EXTKEY] = array(
 	'title' => 'Basic SEO Features',
 	'description' => 'Adds a separate field for the title-tag per page, easy and SEO-friendly keywords and description editing in a new module as well as a flexible Google Sitemap (XML).',
 	'category' => 'fe',
-	'version' => '0.9.6',
+	'version' => '0.9.2',
 	'state' => 'stable',
 	'modify_tables' => 'pages,pages_language_overlay',
 	'author' => 'Benni Mack',
 	'author_email' => 'benni@typo3.org',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '6.2.0-8.9.99',
+			'realurl' => '0.0.0-0.0.0',
+			'typo3' => '6.2.0-7.9.99',
 		),
 		'conflicts' => array(
 		),
 		'suggests' => array(
-			'realurl' => '0.0.0-0.0.0',
-			'cooluri' => '0.0.0-0.0.0',
 		),
 	),
 	'suggests' => array(
