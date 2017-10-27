@@ -67,7 +67,7 @@ class SeoModule extends \TYPO3\CMS\Backend\Module\AbstractFunctionModule {
 	 *
 	 * @return	array
 	 */
-	public function init($pObj, $conf) {
+	public function init(&$pObj, $conf) {
 		// load languages
 		$trans = GeneralUtility::makeInstance('TYPO3\\CMS\\Backend\\Configuration\\TranslationConfigurationProvider');
 		$this->sysLanguages = $trans->getSystemLanguages($pObj->id, $GLOBALS['BACK_PATH']);
@@ -197,7 +197,9 @@ class SeoModule extends \TYPO3\CMS\Backend\Module\AbstractFunctionModule {
 			// load language overlays and path cache for all pages shown
 			$uidList = $GLOBALS['TYPO3_DB']->cleanIntList(implode(',', $pages));
 			$this->loadLanguageOverlays($uidList);
-			$this->loadPathCache($uidList);
+			if (\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded('realurl')) {
+				$this->loadPathCache($uidList);
+			}
 
 			// Render information table
 			$content .= $this->renderSaveButtons();
@@ -421,7 +423,7 @@ class SeoModule extends \TYPO3\CMS\Backend\Module\AbstractFunctionModule {
 		$where = ($this->langOnly || $this->langOnly === 0 ? ' AND language_id = ' . $this->langOnly : '');
 
 		$res = $GLOBALS['TYPO3_DB']->exec_SELECTquery(
-			'page_id, language_id, pagepath, cache_id ',
+			'page_id, language_id, pagepath',
 			'tx_realurl_pathcache',
 			'page_id IN ('. $uidList .') ' . $where,
 			'',
