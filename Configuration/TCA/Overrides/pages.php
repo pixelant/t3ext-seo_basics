@@ -37,6 +37,19 @@ $additionalColumns = array(
             ),
         )
     ),
+    'tx_seo_no_sitemap' => array(
+        'exclude' => 1,
+        'label' => 'Remove from sitemap',
+        'config' => array(
+            'type' => 'check',
+            'items' => array(
+                '1' => array(
+                    '0' => 'Remove'
+                )
+            )
+        )
+    )
  );
 \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTCAcolumns('pages', $additionalColumns);
 \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes('pages', 'tx_seo_titletag, tx_seo_canonicaltag, tx_seo_robots', 1, 'before:keywords');
+\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes('pages', 'tx_seo_no_sitemap', 1, 'after:no_search');

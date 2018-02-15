@@ -102,6 +102,11 @@ class SitemapController {
 				continue;
 			}
 
+            // Remove items that marked as excluded from sitemap
+            if ($item['tx_seo_no_sitemap'] == 1) {
+                continue;
+            }
+
 			$conf = array(
 				'parameter' => $item['uid']
 			);
@@ -407,7 +412,7 @@ class SitemapController {
 	 */
 	protected function fetchPagesFromTreeStructure($id) {
 		$depth = 50;
-		$additionalFields = 'uid,pid,doktype,shortcut,crdate,SYS_LASTCHANGED,shortcut_mode,l18n_cfg';
+		$additionalFields = 'uid,pid,doktype,shortcut,crdate,SYS_LASTCHANGED,shortcut_mode,l18n_cfg,tx_seo_no_sitemap';
 
 		// Initializing the tree object
 		$treeStartingRecord = $this->getFrontendController()->sys_page->getRawRecord('pages', $id, $additionalFields);
@@ -440,6 +445,7 @@ class SitemapController {
 		$tree->addField('doktype', 1);
 		$tree->addField('nav_hide', 1);
 		$tree->addField('l18n_cfg', 1);
+        $tree->addField('tx_seo_no_sitemap', 1);
 
 			// disable recycler and everything below
 		$tree->init('AND doktype!=255' . $this->getFrontendController()->sys_page->enableFields('pages'));
