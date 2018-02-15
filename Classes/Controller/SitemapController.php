@@ -286,7 +286,7 @@ class SitemapController {
 			'pages_language_overlay',
 			'pid',
 			$pageUid,
-			'AND sys_language_uid = ' . (int)$sysLanuageUid
+            'AND sys_language_uid = ' . (int)$sysLanuageUid . ' AND hidden = 0'
 		);
 		return !empty($overlay);
 	}
