@@ -52,4 +52,4 @@ $additionalColumns = array(
  );
 \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addTCAcolumns('pages', $additionalColumns);
 \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes('pages', 'tx_seo_titletag, tx_seo_canonicaltag, tx_seo_robots', 1, 'before:keywords');
-\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes('pages', 'tx_seo_no_sitemap', 1, 'after:no_search');
+\TYPO3\CMS\Core\Utility\ExtensionManagementUtility::addToAllTCAtypes('pages', 'tx_seo_no_sitemap', '', 'after:no_search');
